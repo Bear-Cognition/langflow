@@ -4,7 +4,6 @@ import * as ecs from 'aws-cdk-lib/aws-ecs'
 
 import { Network, EcrRepository, Web, BackEndCluster, Rds, EcsIAM, Rag} from './construct';
 // import * as sqs from 'aws-cdk-lib/aws-sqs';
-
 const errorMessageForBooleanContext = (key: string) => {
   return `There was an error setting $ {key}. Possible causes are as follows.
   - Trying to set it with the -c option instead of changing cdk.json
@@ -16,6 +15,11 @@ const errorMessageForBooleanContext = (key: string) => {
 export class LangflowAppStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
     super(scope, id, props);
+
+    // Add tags to the Entire Stack
+    cdk.Tags.of(this).add('Project', 'Langflow');
+    cdk.Tags.of(this).add('Environment', 'Production');
+
     // Kendra Enable
     const ragEnabled: boolean = this.node.tryGetContext('ragEnabled')!;
     if (typeof ragEnabled !== 'boolean') {
