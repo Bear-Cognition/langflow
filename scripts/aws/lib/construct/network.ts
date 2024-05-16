@@ -25,9 +25,10 @@ export class Network extends Construct {
 
     // VPC等リソースの作成
     let vpcName = process.env.VPC_NAME;
+    const deployToNewVPC = process.env.DEPLOY_NEW_VPC;
 
     // checks if VPC_NAME is set in the environment variables
-    if (vpcName) {
+    if (deployToNewVPC == 'false' && vpcName) {
         this.vpc = ec2.Vpc.fromLookup(scope, 'VPC', {
             vpcName: vpcName,
         });
