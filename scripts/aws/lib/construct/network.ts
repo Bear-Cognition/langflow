@@ -50,7 +50,7 @@ export class Network extends Construct {
 
      // Use an existing VPC
     this.vpc = ec2.Vpc.fromLookup(scope, 'VPC', {
-      vpcName: 'BearVPC',
+      vpcName: 'process.env.VPC_NAME',
     });
 
     // ALBに設定するセキュリティグループ
