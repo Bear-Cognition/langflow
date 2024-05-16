@@ -13,7 +13,6 @@ const errorMessageForBooleanContext = (key: string) => {
 
 // tags from .env file
 const project_tag = process.env.PROJECT_TAG ?? "Langflow";
-const env_tag = process.env.ENV_TAG ?? "Development"; // eg: Production
 
 
 export class LangflowAppStack extends cdk.Stack {
