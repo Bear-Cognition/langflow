@@ -10,7 +10,6 @@ import {
 
 export class Network extends Construct {
   readonly vpc: ec2.Vpc;
-  readonly ivpc: ec2.Ivpc;
   readonly cluster: ecs.Cluster;
   readonly ecsBackSG: ec2.SecurityGroup;
   readonly dbSG: ec2.SecurityGroup;
@@ -25,20 +24,11 @@ export class Network extends Construct {
     const back_service_port=7860
 
     // VPC等リソースの作成
-    let vpcName = process.env.VPC_NAME;
-    const deployToNewVPC = process.env.DEPLOY_NEW_VPC;
-
-    // checks if VPC_NAME is set in the environment variables
-    if (deployToNewVPC == 'false' && vpcName) {
-        this.ivpc = ec2.Vpc.fromLookup(scope, 'VPC', {
-            vpcName: vpcName,
-        });
-    } else {
-      this.vpc = new ec2.Vpc(scope, 'VPC', {
-        vpcName: 'langflow-vpc',
-        ipAddresses: ec2.IpAddresses.cidr('10.0.0.0/16'),
-        maxAzs: 3,
-        subnetConfiguration: [
+    this.vpc = new ec2.Vpc(scope, 'VPC', {
+      vpcName: 'langflow-vpc',
+      ipAddresses: ec2.IpAddresses.cidr('10.0.0.0/16'),
+      maxAzs: 3,
+      subnetConfiguration: [
           {
             cidrMask: 24,
             name: 'langflow-Isolated',
@@ -57,7 +47,6 @@ export class Network extends Construct {
         ],
         natGateways: 1,
       })
-    }
 
     // ALBに設定するセキュリティグループ
     this.albSG = new ec2.SecurityGroup(scope, 'ALBSecurityGroup', {
