@@ -21,7 +21,6 @@ export class LangflowAppStack extends cdk.Stack {
 
     // Add tags to the Entire Stack
     cdk.Tags.of(this).add('Project', project_tag);
-    cdk.Tags.of(this).add('Environment', env_tag);
 
     // Kendra Enable
     const ragEnabled: boolean = this.node.tryGetContext('ragEnabled')!;
