@@ -24,34 +24,38 @@ export class Network extends Construct {
     const back_service_port=7860
 
     // VPC等リソースの作成
-    // this.vpc = new ec2.Vpc(scope, 'VPC', {
-    //   vpcName: 'langflow-vpc',
-    //   ipAddresses: ec2.IpAddresses.cidr('10.0.0.0/16'),
-    //   maxAzs: 3,
-    //   subnetConfiguration: [
-    //     {
-    //       cidrMask: 24,
-    //       name: 'langflow-Isolated',
-    //       subnetType: ec2.SubnetType.PRIVATE_ISOLATED,
-    //     },
-    //     {
-    //       cidrMask: 24,
-    //       name: 'langflow-Public',
-    //       subnetType: ec2.SubnetType.PUBLIC,
-    //     },
-    //     {
-    //       cidrMask: 24,
-    //       name: 'langflow-Private',
-    //       subnetType: ec2.SubnetType.PRIVATE_WITH_EGRESS
-    //     },
-    //   ],
-    //   natGateways: 1,
-    // })
+    let vpcName = process.env.VPC_NAME;
 
-     // Use an existing VPC
-    this.vpc = ec2.Vpc.fromLookup(scope, 'VPC', {
-      vpcName: 'process.env.VPC_NAME',
-    });
+    // checks if VPC_NAME is set in the environment variables
+    if (vpcName) {
+        this.vpc = ec2.Vpc.fromLookup(scope, 'VPC', {
+            vpcName: vpcName,
+        });
+    } else {
+      this.vpc = new ec2.Vpc(scope, 'VPC', {
+        vpcName: 'langflow-vpc',
+        ipAddresses: ec2.IpAddresses.cidr('10.0.0.0/16'),
+        maxAzs: 3,
+        subnetConfiguration: [
+          {
+            cidrMask: 24,
+            name: 'langflow-Isolated',
+            subnetType: ec2.SubnetType.PRIVATE_ISOLATED,
+          },
+          {
+            cidrMask: 24,
+            name: 'langflow-Public',
+            subnetType: ec2.SubnetType.PUBLIC,
+          },
+          {
+            cidrMask: 24,
+            name: 'langflow-Private',
+            subnetType: ec2.SubnetType.PRIVATE_WITH_EGRESS
+          },
+        ],
+        natGateways: 1,
+      })
+    }
 
     // ALBに設定するセキュリティグループ
     this.albSG = new ec2.SecurityGroup(scope, 'ALBSecurityGroup', {

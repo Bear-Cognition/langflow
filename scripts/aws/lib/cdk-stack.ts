@@ -11,14 +11,18 @@ const errorMessageForBooleanContext = (key: string) => {
   - no items in cdk.json (unset) `;
 };
 
+// tags from .env file
+const project_tag = process.env.PROJECT_TAG ?? "Langflow";
+const env_tag = process.env.ENV_TAG ?? "Development"; // eg: Production
+
 
 export class LangflowAppStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
     super(scope, id, props);
 
     // Add tags to the Entire Stack
-    cdk.Tags.of(this).add('Project', 'Langflow');
-    cdk.Tags.of(this).add('Environment', 'Production');
+    cdk.Tags.of(this).add('Project', project_tag);
+    cdk.Tags.of(this).add('Environment', env_tag);
 
     // Kendra Enable
     const ragEnabled: boolean = this.node.tryGetContext('ragEnabled')!;
