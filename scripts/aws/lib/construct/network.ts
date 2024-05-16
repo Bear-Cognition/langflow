@@ -10,6 +10,7 @@ import {
 
 export class Network extends Construct {
   readonly vpc: ec2.Vpc;
+  readonly ivpc: ec2.Ivpc;
   readonly cluster: ecs.Cluster;
   readonly ecsBackSG: ec2.SecurityGroup;
   readonly dbSG: ec2.SecurityGroup;
@@ -29,7 +30,7 @@ export class Network extends Construct {
 
     // checks if VPC_NAME is set in the environment variables
     if (deployToNewVPC == 'false' && vpcName) {
-        this.vpc = ec2.Vpc.fromLookup(scope, 'VPC', {
+        this.ivpc = ec2.Vpc.fromLookup(scope, 'VPC', {
             vpcName: vpcName,
         });
     } else {
