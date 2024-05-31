@@ -140,7 +140,10 @@ def get_file_path_value(file_path):
     # If the path is not in the cache dir, return empty string
     # This is to prevent access to files outside the cache dir
     # If the path is not a file, return empty string
-    if not path.exists() or not str(path).startswith(user_cache_dir("langflow", "langflow")):
+    if not str(path).startswith(user_cache_dir("langflow", "langflow")):
+        return ""
+
+    if not path.exists():
         return ""
     return file_path
 
@@ -283,7 +286,7 @@ async def get_next_runnable_vertices(
         for v_id in set(next_runnable_vertices):  # Use set to avoid duplicates
             graph.vertices_to_run.remove(v_id)
             graph.remove_from_predecessors(v_id)
-        await chat_service.set_cache(flow_id=flow_id, data=graph, lock=lock)
+        await chat_service.set_cache(key=flow_id, data=graph, lock=lock)
     return next_runnable_vertices
 
 

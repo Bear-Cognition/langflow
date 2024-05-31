@@ -139,8 +139,18 @@ class FlowListCreate(BaseModel):
     flows: List[FlowCreate]
 
 
+class FlowListIds(BaseModel):
+    flow_ids: List[str]
+
+
 class FlowListRead(BaseModel):
     flows: List[FlowRead]
+
+
+class FlowListReadWithFolderName(BaseModel):
+    flows: List[FlowRead]
+    name: str
+    description: str
 
 
 class InitResponse(BaseModel):
@@ -238,6 +248,7 @@ class ResultDataResponse(BaseModel):
     artifacts: Optional[Any] = Field(default_factory=dict)
     timedelta: Optional[float] = None
     duration: Optional[str] = None
+    used_frozen_result: Optional[bool] = False
 
 
 class VertexBuildResponse(BaseModel):
@@ -306,3 +317,7 @@ class FlowDataRequest(BaseModel):
     nodes: List[dict]
     edges: List[dict]
     viewport: Optional[dict] = None
+
+
+class ConfigResponse(BaseModel):
+    frontend_timeout: int

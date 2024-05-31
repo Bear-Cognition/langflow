@@ -6,11 +6,12 @@ import { ChatMessageType } from "../chat";
 import { FlowStyleType, FlowType, NodeDataType, NodeType } from "../flow/index";
 import { sourceHandleType, targetHandleType } from "./../flow/index";
 export type InputComponentType = {
+  name?: string;
   autoFocus?: boolean;
   onBlur?: (event: React.FocusEvent<HTMLInputElement>) => void;
   value?: string;
   disabled?: boolean;
-  onChange?: (value: string) => void;
+  onChange?: (value: string, snapshot?: boolean) => void;
   password: boolean;
   required?: boolean;
   isForm?: boolean;
@@ -30,6 +31,9 @@ export type InputComponentType = {
   setSelectedOption?: (value: string) => void;
   selectedOptions?: string[];
   setSelectedOptions?: (value: string[]) => void;
+  objectOptions?: Array<{ name: string; id: string }>;
+  isObjectOption?: boolean;
+  onChangeFolderName?: (e: any) => void;
 };
 export type ToggleComponentType = {
   enabled: boolean;
@@ -100,7 +104,7 @@ export type TextAreaComponentType = {
   nodeClass?: APIClassType;
   setNodeClass?: (value: APIClassType) => void;
   disabled: boolean;
-  onChange: (value: string[] | string) => void;
+  onChange: (value: string[] | string, skipSnapshot?: boolean) => void;
   value: string;
   editNode?: boolean;
   id?: string;
@@ -112,7 +116,7 @@ export type PromptAreaComponentType = {
   nodeClass?: APIClassType;
   setNodeClass?: (value: APIClassType, code?: string) => void;
   disabled: boolean;
-  onChange: (value: string[] | string) => void;
+  onChange: (value: string[] | string, skipSnapshot?: boolean) => void;
   value: string;
   readonly?: boolean;
   editNode?: boolean;
@@ -122,7 +126,7 @@ export type PromptAreaComponentType = {
 export type CodeAreaComponentType = {
   setOpenModal?: (bool: boolean) => void;
   disabled: boolean;
-  onChange: (value: string[] | string) => void;
+  onChange: (value: string[] | string, skipSnapshot?: boolean) => void;
   value: string;
   editNode?: boolean;
   nodeClass?: APIClassType;
@@ -137,7 +141,7 @@ export type CodeAreaComponentType = {
 export type FileComponentType = {
   IOInputProps?;
   disabled: boolean;
-  onChange: (value: string[] | string) => void;
+  onChange: (value: string[] | string, skipSnapshot?: boolean) => void;
   value: string;
   fileTypes: Array<string>;
   onFileChange: (value: string) => void;
@@ -170,7 +174,7 @@ export type IntComponentType = {
   value: string;
   disabled?: boolean;
   rangeSpec: RangeSpecType;
-  onChange: (value: string) => void;
+  onChange: (value: string, skipSnapshot?: boolean) => void;
   editNode?: boolean;
   id?: string;
 };
@@ -178,7 +182,7 @@ export type IntComponentType = {
 export type FloatComponentType = {
   value: string;
   disabled?: boolean;
-  onChange: (value: string) => void;
+  onChange: (value: string, skipSnapshot?: boolean) => void;
   rangeSpec: RangeSpecType;
   editNode?: boolean;
   id?: string;
@@ -220,6 +224,7 @@ export type AccordionComponentType = {
   keyValue?: string;
   openDisc?: boolean;
   sideBar?: boolean;
+  options?: { title: string; icon: string }[];
 };
 export type Side = "top" | "right" | "bottom" | "left";
 
@@ -264,9 +269,11 @@ export type IconComponentProps = {
 export type InputProps = {
   name: string | null;
   description: string | null;
+  endpointName?: string;
   maxLength?: number;
   setName?: (name: string) => void;
   setDescription?: (description: string) => void;
+  setEndpointName?: (endpointName: string) => void;
   invalidNameList?: string[];
 };
 
@@ -400,6 +407,7 @@ export type StoreApiKeyType = {
 export type groupedObjType = {
   family: string;
   type: string;
+  display_name?: string;
 };
 
 export type nodeGroupedObjType = {
@@ -511,7 +519,7 @@ export type nodeToolbarPropsType = {
   updateNodeCode?: (
     newNodeClass: APIClassType,
     code: string,
-    name: string,
+    name: string
   ) => void;
   setShowState: (show: boolean | SetStateAction<boolean>) => void;
   isOutdated?: boolean;
@@ -561,7 +569,7 @@ export type chatMessagePropsType = {
   updateChat: (
     chat: ChatMessageType,
     message: string,
-    stream_url?: string,
+    stream_url?: string
   ) => void;
 };
 
@@ -653,16 +661,17 @@ export type codeTabsPropsType = {
       value: string,
       node: NodeType,
       template: TemplateVariableType,
-      tweak: tweakType,
+      tweak: tweakType
     ) => string;
     buildTweakObject?: (
       tw: string,
       changes: string | string[] | boolean | number | Object[] | Object,
-      template: TemplateVariableType,
+      template: TemplateVariableType
     ) => Promise<string | void>;
   };
   activeTweaks?: boolean;
   setActiveTweaks?: (value: boolean) => void;
+  allowExport?: boolean;
 };
 
 export type crashComponentPropsType = {

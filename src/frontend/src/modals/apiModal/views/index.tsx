@@ -13,20 +13,18 @@ import { useTweaksStore } from "../../../stores/tweaksStore";
 import { TemplateVariableType } from "../../../types/api";
 import { uniqueTweakType } from "../../../types/components";
 import { FlowType } from "../../../types/flow/index";
-import {
-  getCurlCode,
-  getPythonApiCode,
-  getPythonCode,
-  getWidgetCode,
-  tabsArray,
-} from "../../../utils/utils";
 import BaseModal from "../../baseModal";
 import { buildContent } from "../utils/build-content";
 import { buildTweaks } from "../utils/build-tweaks";
 import { checkCanBuildTweakObject } from "../utils/check-can-build-tweak-object";
 import { getChangesType } from "../utils/get-changes-types";
+import getCurlCode from "../utils/get-curl-code";
 import { getNodesWithDefaultValue } from "../utils/get-nodes-with-default-value";
+import getPythonApiCode from "../utils/get-python-api-code";
+import getPythonCode from "../utils/get-python-code";
 import { getValue } from "../utils/get-value";
+import getWidgetCode from "../utils/get-widget-code";
+import tabsArray from "../utils/tabs-array";
 
 const ApiModal = forwardRef(
   (
@@ -37,7 +35,7 @@ const ApiModal = forwardRef(
       flow: FlowType;
       children: ReactNode;
     },
-    ref,
+    ref
   ) => {
     const tweak = useTweaksStore((state) => state.tweak);
     const addTweaks = useTweaksStore((state) => state.setTweak);
@@ -49,7 +47,12 @@ const ApiModal = forwardRef(
     const [open, setOpen] = useState(false);
     const [activeTab, setActiveTab] = useState("0");
     const pythonApiCode = getPythonApiCode(flow?.id, autoLogin, tweak);
-    const curl_code = getCurlCode(flow?.id, autoLogin, tweak);
+    const curl_code = getCurlCode(
+      flow?.id,
+      autoLogin,
+      tweak,
+      flow?.endpoint_name
+    );
     const pythonCode = getPythonCode(flow?.name, tweak);
     const widgetCode = getWidgetCode(flow?.id, flow?.name, autoLogin);
     const tweaksCode = buildTweaks(flow);
@@ -108,7 +111,7 @@ const ApiModal = forwardRef(
               buildTweakObject(
                 nodeId,
                 element.data.node.template[templateField].value,
-                element.data.node.template[templateField],
+                element.data.node.template[templateField]
               );
             }
           });
@@ -125,7 +128,7 @@ const ApiModal = forwardRef(
     async function buildTweakObject(
       tw: string,
       changes: string | string[] | boolean | number | Object[] | Object,
-      template: TemplateVariableType,
+      template: TemplateVariableType
     ) {
       changes = getChangesType(changes, template);
 
@@ -163,7 +166,12 @@ const ApiModal = forwardRef(
 
     const addCodes = (cloneTweak) => {
       const pythonApiCode = getPythonApiCode(flow?.id, autoLogin, cloneTweak);
-      const curl_code = getCurlCode(flow?.id, autoLogin, cloneTweak);
+      const curl_code = getCurlCode(
+        flow?.id,
+        autoLogin,
+        cloneTweak,
+        flow?.endpoint_name
+      );
       const pythonCode = getPythonCode(flow?.name, cloneTweak);
       const widgetCode = getWidgetCode(flow?.id, flow?.name, autoLogin);
 
@@ -201,11 +209,12 @@ const ApiModal = forwardRef(
             }}
             activeTweaks={activeTweaks}
             setActiveTweaks={setActiveTweaks}
+            allowExport
           />
         </BaseModal.Content>
       </BaseModal>
     );
-  },
+  }
 );
 
 export default ApiModal;

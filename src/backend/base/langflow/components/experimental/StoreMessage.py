@@ -1,6 +1,6 @@
 from typing import List, Optional
 
-from langflow.interface.custom.custom_component import CustomComponent
+from langflow.custom import CustomComponent
 from langflow.memory import get_messages, store_message
 from langflow.schema import Record
 
@@ -32,7 +32,6 @@ class StoreMessageComponent(CustomComponent):
         session_id: Optional[str] = None,
         message: str = "",
     ) -> List[Record]:
-
         store_message(
             sender=sender,
             sender_name=sender_name,

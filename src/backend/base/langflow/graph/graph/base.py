@@ -14,10 +14,11 @@ from langflow.graph.graph.state_manager import GraphStateManager
 from langflow.graph.graph.utils import process_flow
 from langflow.graph.schema import InterfaceComponentTypes, RunOutputs
 from langflow.graph.vertex.base import Vertex
-from langflow.graph.vertex.types import ChatVertex, FileToolVertex, LLMVertex, StateVertex, ToolkitVertex
-from langflow.interface.tools.constants import FILE_TOOLS
+from langflow.graph.vertex.types import InterfaceVertex, StateVertex
 from langflow.schema import Record
 from langflow.schema.schema import INPUT_FIELD_NAME, InputType
+from langflow.services.cache.utils import CacheMiss
+from langflow.services.chat.service import ChatService
 from langflow.services.deps import get_chat_service
 
 if TYPE_CHECKING:
@@ -242,6 +243,7 @@ class Graph:
         outputs: list[str],
         stream: bool,
         session_id: str,
+        fallback_to_env_vars: bool,
     ) -> List[Optional["ResultData"]]:
         """
         Runs the graph with the given inputs.
@@ -289,7 +291,7 @@ class Graph:
             start_component_id = next(
                 (vertex_id for vertex_id in self._is_input_vertices if "chat" in vertex_id.lower()), None
             )
-            await self.process(start_component_id=start_component_id)
+            await self.process(start_component_id=start_component_id, fallback_to_env_vars=fallback_to_env_vars)
             self.increment_run_count()
         except Exception as exc:
             logger.exception(exc)
@@ -315,6 +317,7 @@ class Graph:
         outputs: Optional[list[str]] = None,
         session_id: Optional[str] = None,
         stream: bool = False,
+        fallback_to_env_vars: bool = False,
     ) -> List[RunOutputs]:
         """
         Run the graph with the given inputs and return the outputs.
@@ -340,6 +343,7 @@ class Graph:
             outputs=outputs,
             session_id=session_id,
             stream=stream,
+            fallback_to_env_vars=fallback_to_env_vars,
         )
 
         try:
@@ -362,6 +366,7 @@ class Graph:
         outputs: Optional[list[str]] = None,
         session_id: Optional[str] = None,
         stream: bool = False,
+        fallback_to_env_vars: bool = False,
     ) -> List[RunOutputs]:
         """
         Runs the graph with the given inputs.
@@ -403,6 +408,7 @@ class Graph:
                 outputs=outputs or [],
                 stream=stream,
                 session_id=session_id or "",
+                fallback_to_env_vars=fallback_to_env_vars,
             )
             run_output_object = RunOutputs(inputs=run_inputs, outputs=run_outputs)
             logger.debug(f"Run outputs: {run_output_object}")
@@ -468,9 +474,9 @@ class Graph:
         """Marks a branch of the graph."""
         if visited is None:
             visited = set()
-        visited.add(vertex_id)
         if vertex_id in visited:
             return
+        visited.add(vertex_id)
 
         self.mark_vertex(vertex_id, state)
 
@@ -682,16 +688,8 @@ class Graph:
 
     def _build_vertex_params(self) -> None:
         """Identifies and handles the LLM vertex within the graph."""
-        llm_vertex = None
         for vertex in self.vertices:
             vertex._build_params()
-            if isinstance(vertex, LLMVertex):
-                llm_vertex = vertex
-
-        if llm_vertex:
-            for vertex in self.vertices:
-                if isinstance(vertex, ToolkitVertex):
-                    vertex.params["llm"] = llm_vertex
 
     def _validate_vertex(self, vertex: Vertex) -> bool:
         """Validates a vertex."""
@@ -708,10 +706,11 @@ class Graph:
     async def build_vertex(
         self,
         lock: asyncio.Lock,
-        set_cache_coro: Callable[["Graph", asyncio.Lock], Coroutine],
+        chat_service: ChatService,
         vertex_id: str,
         inputs_dict: Optional[Dict[str, str]] = None,
         user_id: Optional[str] = None,
+        fallback_to_env_vars: bool = False,
     ):
         """
         Builds a vertex in the graph.
@@ -732,17 +731,35 @@ class Graph:
         """
         vertex = self.get_vertex(vertex_id)
         try:
-            if not vertex.frozen or not vertex._built:
-                await vertex.build(user_id=user_id, inputs=inputs_dict)
+            params = ""
+            if vertex.frozen:
+                # Check the cache for the vertex
+                cached_result = await chat_service.get_cache(key=vertex.id)
+                if isinstance(cached_result, CacheMiss):
+                    await vertex.build(user_id=user_id, inputs=inputs_dict, fallback_to_env_vars=fallback_to_env_vars)
+                    await chat_service.set_cache(key=vertex.id, data=vertex)
+                else:
+                    cached_vertex = cached_result["result"]
+                    # Now set update the vertex with the cached vertex
+                    vertex._built = cached_vertex._built
+                    vertex.result = cached_vertex.result
+                    vertex.artifacts = cached_vertex.artifacts
+                    vertex._built_object = cached_vertex._built_object
+                    vertex._custom_component = cached_vertex._custom_component
+                    if vertex.result is not None:
+                        vertex.result.used_frozen_result = True
+
+            else:
+                await vertex.build(user_id=user_id, inputs=inputs_dict, fallback_to_env_vars=fallback_to_env_vars)
 
             if vertex.result is not None:
-                params = vertex._built_object_repr()
+                params = f"{vertex._built_object_repr()}{params}"
                 valid = True
                 result_dict = vertex.result
                 artifacts = vertex.artifacts
             else:
                 raise ValueError(f"No result found for vertex {vertex_id}")
-
+            set_cache_coro = partial(chat_service.set_cache, key=self.flow_id)
             next_runnable_vertices, top_level_vertices = await self.get_next_and_top_level_vertices(
                 lock, set_cache_coro, vertex
             )
@@ -796,7 +813,7 @@ class Graph:
                 vertices.append(vertex)
         return vertices
 
-    async def process(self, start_component_id: Optional[str] = None) -> "Graph":
+    async def process(self, fallback_to_env_vars: bool, start_component_id: Optional[str] = None) -> "Graph":
         """Processes the graph with vertices in each layer run in parallel."""
 
         first_layer = self.sort_vertices(start_component_id=start_component_id)
@@ -813,14 +830,14 @@ class Graph:
             for vertex_id in current_batch:
                 vertex = self.get_vertex(vertex_id)
                 lock = chat_service._cache_locks[self.run_id]
-                set_cache_coro = partial(chat_service.set_cache, flow_id=self.run_id)
                 task = asyncio.create_task(
                     self.build_vertex(
                         lock=lock,
-                        set_cache_coro=set_cache_coro,
+                        chat_service=chat_service,
                         vertex_id=vertex_id,
                         user_id=self.user_id,
                         inputs_dict={},
+                        fallback_to_env_vars=fallback_to_env_vars,
                     ),
                     name=f"{vertex.display_name} Run {vertex_task_run_count.get(vertex_id, 0)}",
                 )
@@ -987,8 +1004,8 @@ class Graph:
         """Returns the node class based on the node type."""
         # First we check for the node_base_type
         node_name = node_id.split("-")[0]
-        if node_name in ["ChatOutput", "ChatInput"]:
-            return ChatVertex
+        if node_name in InterfaceComponentTypes:
+            return InterfaceVertex
         elif node_name in ["SharedState", "Notify", "Listen"]:
             return StateVertex
         elif node_base_type in lazy_load_vertex_dict.VERTEX_TYPE_MAP:
@@ -996,8 +1013,6 @@ class Graph:
         elif node_name in lazy_load_vertex_dict.VERTEX_TYPE_MAP:
             return lazy_load_vertex_dict.VERTEX_TYPE_MAP[node_name]
 
-        if node_type in FILE_TOOLS:
-            return FileToolVertex
         if node_type in lazy_load_vertex_dict.VERTEX_TYPE_MAP:
             return lazy_load_vertex_dict.VERTEX_TYPE_MAP[node_type]
         return (
